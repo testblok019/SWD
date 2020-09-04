@@ -1,0 +1,264 @@
+﻿@using SwdPageRecorder.UI;
+@using SwdPageRecorder.UI.CodeGeneration
+	
+@functions
+{		
+	
+    string JavaHow(string howFromCSharp)
+    {
+        switch (howFromCSharp)
+        {
+            case "Id": return "ID";
+            case "Name": return "NAME";
+            case "TagName": return "TAG_NAME";
+            case "ClassName": return "CLASS_NAME";
+            case "CssSelector": return "CSS";
+            case "LinkText": return "LINK_TEXT";
+            case "PartialLinkText": return "PARTIAL_LINK_TEXT";
+            case "XPath": return "XPATH";
+            default: return "LOCATOR PARSE ERROR";
+        }
+    }
+
+    string QuoteLocator(string locator)
+    {
+        locator = locator.Replace("\"", "\\\"");
+        return locator;
+    }
+		
+	string FirstLetterUppercase(string str)
+	{
+		return char.ToUpper(str[0]) + str.Substring(1);
+	}
+	
+	
+}
+
+@*Package decleartion to be added for generated Java Page class.*@
+
+import org.openqa.selenium.By;
+import org.openqa.selenium.WebDriver;
+import org.openqa.selenium.WebElement;
+import org.openqa.selenium.support.FindBy;
+import org.openqa.selenium.support.How;
+import org.openqa.selenium.support.ui.ExpectedConditions;
+import org.openqa.selenium.support.ui.WebDriverWait;
+
+
+public class @Raw(@Model.PageObject.PageObjectName)
+{	
+	WebDriver driver;
+    WebDriverWait wait;
+	
+	public @Raw(@Model.PageObject.PageObjectName) (WebDriver driver) {
+        this.driver = driver;
+        wait = new WebDriverWait(driver, 60);
+    }
+    
+		
+@*Method for generating locators.*@
+@*Example - private static final String LOCATOR_DIRECTIONSBUTTON="//button[@id='searchbox-directions']";*@
+
+	
+	@foreach (var element in @Model.PageObject.Items )
+	{
+	var fieldName = @element.Name.ToUpper();
+	fieldName = "private static final String LOCATOR_"+fieldName;
+	<text>
+	@fieldName="@Raw(@QuoteLocator(@element.Locator))";
+	</text>
+	}
+	
+@*Method for mapping locators with page factory pattern.*@
+@*@FindBy(how=How.XPATH, using=LOCATOR_DIRECTIONSBUTTON)*@
+@*private WebElement directionsButton;*@
+
+	
+	@foreach (var element in @Model.PageObject.Items) 
+    {
+	if(element.ReturnsCollection) 
+	{        
+	<text>
+	@@FindBy(how=How.@Raw(@JavaHow(@element.How)), using=LOCATOR_@element.Name.ToUpper())
+	private List<WebElement> @Raw(@element.Name);
+	</text>
+	}
+	else 
+	{
+	var fieldName = @element.Name;
+	<text>
+	@@FindBy(how=How.@Raw(@JavaHow(@element.How)), using=LOCATOR_@element.Name.ToUpper())
+	private WebElement @Raw(@fieldName);
+	</text>
+	}
+	}
+	
+@*Method for generating intraction functions based on web elements captured. Methods will be*@
+@*generated based on type of web element.*@
+
+	
+	@foreach (var element in @Model.PageObject.Items )
+	{
+	var fieldName = element.Name;
+	if(fieldName.Contains("TextField"))
+	{
+	var method = "enter"+@FirstLetterUppercase(fieldName)+"(String textToBeEntered)";
+	var methodName = "enter"+@FirstLetterUppercase(fieldName);			
+	var clear = @fieldName+".clear()";
+	var sendKeys = @fieldName+".sendKeys(textToBeEntered)";
+	<text>
+	public void @method{
+		System.out.println("[@Model.PageObject.PageObjectName : @methodName] Entering '" + textToBeEntered + "' in @FirstLetterUppercase(fieldName)");
+		@fieldName=wait.until(ExpectedConditions.visibilityOfElementLocated(By.xpath(LOCATOR_@element.Name.ToUpper())));
+		@clear;
+		@sendKeys;
+	}
+	</text>
+
+	method = "get"+@FirstLetterUppercase(fieldName)+"()";
+	methodName = "get"+@FirstLetterUppercase(fieldName);
+	var getText = @fieldName+".getText()";
+	
+	<text>
+	public String @method{
+		System.out.println("[@Model.PageObject.PageObjectName : @methodName] Getting text from @FirstLetterUppercase(fieldName)");
+		@fieldName=wait.until(ExpectedConditions.visibilityOfElementLocated(By.xpath(LOCATOR_@element.Name.ToUpper())));
+		return @getText;
+	}
+	</text>
+	}
+	else if(fieldName.Contains("Checkbox"))
+	{
+	var method = "set"+@FirstLetterUppercase(fieldName)+"(FW_Enums.truefalse checkBoxState)";
+	var methodName = "set"+@FirstLetterUppercase(fieldName);
+	var isSelected = @fieldName+".isSelected()";
+	var click = @fieldName+".click()";
+	<text>
+	public void @method{
+		System.out.println("[@Model.PageObject.PageObjectName : @methodName] Setting @element.Name Checkbox to " + checkBoxState.toString());
+		@fieldName=wait.until(ExpectedConditions.visibilityOfElementLocated(By.xpath(LOCATOR_@element.Name.ToUpper())));
+			Boolean isChecked = @isSelected;
+			switch (checkBoxState) {
+			case TRUE:
+				if (!isChecked) {
+					@click;
+				}
+				break;
+			case FALSE:
+				if (isChecked) {
+					@click;
+				}
+				break;
+		}
+	}
+	</text>
+	}
+	else if(fieldName.Contains("RadioButton"))
+	{
+	var method = "select"+@FirstLetterUppercase(fieldName)+"()";
+	var methodName = "select"+@FirstLetterUppercase(fieldName);
+	var click = @fieldName+".click()";
+	<text>
+	public void @method{
+		System.out.println("[@Model.PageObject.PageObjectName : @methodName] Selecting '@element.Name' Radio button option");
+		@fieldName=wait.until(ExpectedConditions.visibilityOfElementLocated(By.xpath(LOCATOR_@element.Name.ToUpper())));
+		@click;
+	}
+	</text>
+	}
+	else if(fieldName.Contains("Button"))
+	{
+	var method = "click"+@FirstLetterUppercase(fieldName)+"()";
+	var methodName = "click"+@FirstLetterUppercase(fieldName);
+	var click = @fieldName+".click()";
+	<text>
+	public void @method{
+		System.out.println("[@Model.PageObject.PageObjectName : @methodName] Clicking '@element.Name' button");
+		@fieldName=wait.until(ExpectedConditions.visibilityOfElementLocated(By.xpath(LOCATOR_@element.Name.ToUpper())));
+		@click;
+	}
+	</text>
+	}
+	else if(fieldName.Contains("Link"))
+	{
+	var method = "click"+@FirstLetterUppercase(fieldName)+"()";
+	var methodName = "click"+@FirstLetterUppercase(fieldName);
+	var click = @fieldName+".click()";
+	<text>
+	public void @method{
+		System.out.println("[@Model.PageObject.PageObjectName : @methodName] Clicking '@element.Name' Link");
+		@fieldName=wait.until(ExpectedConditions.visibilityOfElementLocated(By.xpath(LOCATOR_@element.Name.ToUpper())));
+		@click;
+	}
+	</text>
+	}
+	else if(fieldName.Contains("Select") && !fieldName.Contains("Multi"))
+	{
+	var method = "select"+@FirstLetterUppercase(fieldName)+"(String itemToBeSelcted)";
+	var methodName = "select"+@FirstLetterUppercase(fieldName);
+	var selectByValue = @fieldName+".selectByValue(itemToBeSelcted)";
+	<text>
+	public void @method {
+		System.out.println("[@Model.PageObject.PageObjectName : @methodName] Selecting '" + itemToBeSelcted + "' from @element.Name Dropdown List");
+		@fieldName=wait.until(ExpectedConditions.visibilityOfElementLocated(By.xpath(LOCATOR_@element.Name.ToUpper())));
+		Select dropdownList = new Select(@fieldName);
+		dropdownList.selectByValue(itemToBeSelcted);
+	}
+	</text>
+	}
+	else if(fieldName.Contains("MultiSelect"))
+	{
+	var escapeSymbol = @Raw("<Integer>");
+	
+	var method = "select"+@FirstLetterUppercase(fieldName)+"(WebDriver d, List";
+	var param =" itemsToBeSelected)";
+	var methodName = "select"+@FirstLetterUppercase(fieldName);
+	var selectByValue = @fieldName+".selectByValue(itemToBeSelcted)";
+	<text>
+	public void @method@escapeSymbol@param {
+		System.out.println("[@Model.PageObject.PageObjectName : @methodName] Selecting list items..." + itemsToBeSelected);
+		@fieldName=wait.until(ExpectedConditions.visibilityOfElementLocated(By.xpath(LOCATOR_@element.Name.ToUpper())));
+		Select multiSelectList = new Select(@fieldName);
+		Actions selectOptions = new Actions();
+		for (Integer item : itemsToBeSelected) {
+			selectOptions.click(multiSelectList.getOptions().get(item));
+			selectOptions.keyDown(Keys.CONTROL);
+		}
+		selectOptions.keyUp(Keys.CONTROL);
+		selectOptions.build().perform();
+	}
+	</text>
+	}
+	else if(fieldName.Contains("Label"))
+	{
+	var method = "get"+@FirstLetterUppercase(fieldName)+"()";
+	var methodName = "get"+@FirstLetterUppercase(fieldName);
+	var parsedTextVar = @fieldName+".getText().replaceAll";
+	var trim = ".trim()";
+	<text>
+	public String @method {
+		System.out.println("[@Model.PageObject.PageObjectName : @methodName] Getting @element.Name.");
+		@fieldName=wait.until(ExpectedConditions.visibilityOfElementLocated(By.xpath(LOCATOR_@element.Name.ToUpper())));
+		String parsedText = @parsedTextVar@Raw("(\"(?:\\n|\\r)\", \"\")")@trim;
+		return parsedText;
+	}
+	</text>
+	}
+	else if(fieldName.Contains("Text"))
+	{
+	var method = "get"+@FirstLetterUppercase(fieldName)+"()";
+	var methodName = "get"+@FirstLetterUppercase(fieldName);
+	
+	var parsedTextVar = @fieldName+".getText().replaceAll";
+	var trim = ".trim()";
+	<text>
+	public String @method {
+		System.out.println("[@Model.PageObject.PageObjectName : @methodName] Getting @FirstLetterUppercase(@element.Name).");
+		@fieldName=wait.until(ExpectedConditions.visibilityOfElementLocated(By.xpath(LOCATOR_@element.Name.ToUpper())));
+		String parsedText = @parsedTextVar@Raw("(\"(?:\\n|\\r)\", \"\")")@trim;
+		return parsedText;
+	}
+	</text>
+	}
+	}
+}
